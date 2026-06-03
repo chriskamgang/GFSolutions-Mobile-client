@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../screens/splash_screen.dart';
+import '../screens/onboarding_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/pin_screen.dart';
 import '../screens/home/home_screen.dart';
@@ -27,19 +28,20 @@ import '../widgets/main_shell.dart';
 
 GoRouter createRouter(AuthProvider authProvider) {
   return GoRouter(
-    initialLocation: authProvider.isAuthenticated ? '/' : '/login',
+    initialLocation: '/splash',
     refreshListenable: authProvider,
     redirect: (context, state) {
       final isAuthenticated = authProvider.isAuthenticated;
-      final isOnLogin = state.matchedLocation == '/login';
-      final isOnPin = state.matchedLocation == '/pin';
+      final loc = state.matchedLocation;
+      const publicRoutes = ['/splash', '/onboarding', '/login', '/pin'];
 
-      if (!isAuthenticated && !isOnLogin && !isOnPin) return '/login';
-      if (isAuthenticated && (isOnLogin || isOnPin)) return '/';
+      if (!isAuthenticated && !publicRoutes.contains(loc)) return '/login';
+      if (isAuthenticated && (loc == '/login' || loc == '/pin')) return '/';
       return null;
     },
     routes: [
       GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
+      GoRoute(path: '/onboarding', builder: (_, __) => const OnboardingScreen()),
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/pin', builder: (_, __) => const PinScreen()),
       ShellRoute(
