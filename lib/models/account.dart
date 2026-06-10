@@ -5,6 +5,7 @@ class Account {
   final double balance;
   final String status;
   final String? clientId;
+  final String? agencyId;
   final DateTime createdAt;
 
   Account({
@@ -14,6 +15,7 @@ class Account {
     required this.balance,
     required this.status,
     this.clientId,
+    this.agencyId,
     required this.createdAt,
   });
 
@@ -43,6 +45,7 @@ class Account {
       balance: double.tryParse(json['balance']?.toString() ?? '0') ?? 0,
       status: json['status'] ?? 'ACTIVE',
       clientId: json['clientId'],
+      agencyId: json['agencyId'],
       createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
     );
   }

@@ -18,15 +18,16 @@ class _MobileMoneyScreenState extends State<MobileMoneyScreen> {
   final _phoneCtrl = TextEditingController();
   final _amountCtrl = TextEditingController();
   Account? _selectedAccount;
-  String _operator = 'ORANGE_MONEY';
+  String _operator = 'ORANGE_CMR';
   String _direction = 'WITHDRAW'; // WITHDRAW = MF -> MoMo, DEPOSIT = MoMo -> MF
   bool _isLoading = false;
+  // ignore: unused_field
+  String? _pendingPaymentId;
   static final _fmt = NumberFormat('#,###', 'fr_FR');
 
   final _operators = [
-    {'value': 'ORANGE_MONEY', 'label': 'Orange Money', 'color': const Color(0xFFFF6600)},
-    {'value': 'MTN_MOMO', 'label': 'MTN MoMo', 'color': const Color(0xFFFFCC00)},
-    {'value': 'WAVE', 'label': 'Wave', 'color': const Color(0xFF1DC4E9)},
+    {'value': 'ORANGE_CMR', 'label': 'Orange Money', 'color': const Color(0xFFFF6600)},
+    {'value': 'MTN_MOMO_CMR', 'label': 'MTN MoMo', 'color': const Color(0xFFFFCC00)},
   ];
 
   Future<void> _submit() async {
@@ -40,28 +41,95 @@ class _MobileMoneyScreenState extends State<MobileMoneyScreen> {
       return;
     }
 
+    // Formater le numero : ajouter 237 si besoin
+    String phone = _phoneCtrl.text.trim().replaceAll(RegExp(r'[\s\-\.]'), '');
+    if (phone.startsWith('6') || phone.startsWith('2')) {
+      if (!phone.startsWith('237')) phone = '237$phone';
+    }
+    if (phone.startsWith('+')) phone = phone.substring(1);
+
     setState(() { _isLoading = true; });
     try {
-      await ApiService().post('/transactions/mobile-money', data: {
+      final endpoint = _direction == 'DEPOSIT'
+          ? '/pawapay/client/deposit'
+          : '/pawapay/client/payout';
+
+      final response = await ApiService().post(endpoint, data: {
         'accountId': _selectedAccount!.id,
-        'phone': _phoneCtrl.text.trim(),
+        'phone': phone,
         'amount': amount,
-        'operator': _operator,
-        'direction': _direction,
+        'provider': _operator,
+        'agencyId': _selectedAccount!.agencyId ?? '',
       });
+
       if (!mounted) return;
-      await context.read<AccountProvider>().fetchAccounts();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Operation Mobile Money reussie !'), backgroundColor: AppColors.success),
-      );
-      Navigator.pop(context);
+
+      final paymentId = response.data?['paymentId'] ?? response.data?['withdrawalId'];
+      setState(() { _pendingPaymentId = paymentId; });
+
+      // Afficher le dialogue d'attente de confirmation
+      _showPendingDialog(paymentId);
     } catch (e) {
+      if (!mounted) return;
+      String errorMsg = e.toString();
+      if (errorMsg.contains('message:')) {
+        errorMsg = errorMsg.split('message:').last.trim();
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur: $e'), backgroundColor: AppColors.error),
+        SnackBar(content: Text(errorMsg), backgroundColor: AppColors.error),
       );
     } finally {
       if (mounted) setState(() { _isLoading = false; });
     }
+  }
+
+  void _showPendingDialog(String? paymentId) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(
+              _direction == 'DEPOSIT' ? Icons.arrow_downward : Icons.arrow_upward,
+              color: AppColors.primary,
+            ),
+            const SizedBox(width: 8),
+            Text(_direction == 'DEPOSIT' ? 'Depot en cours' : 'Retrait en cours'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.phone_android, size: 48, color: AppColors.accent),
+            const SizedBox(height: 16),
+            Text(
+              _direction == 'DEPOSIT'
+                  ? 'Confirmez le paiement sur votre telephone pour valider le depot.'
+                  : 'Le transfert vers votre Mobile Money est en cours.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 15),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${_fmt.format(double.tryParse(_amountCtrl.text.replaceAll(' ', '')) ?? 0)} FCFA',
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.primary),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<AccountProvider>().fetchAccounts();
+              Navigator.pop(context);
+            },
+            child: const Text('Fermer'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
