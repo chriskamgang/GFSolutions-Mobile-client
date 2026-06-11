@@ -45,6 +45,13 @@ Color _providerColor(String code) {
   return AppColors.primary;
 }
 
+// Logo par operateur
+String? _providerLogo(String code) {
+  if (code.contains('MTN')) return 'assets/images/mtn_momo.jpeg';
+  if (code.contains('ORANGE')) return 'assets/images/orange_money.png';
+  return null;
+}
+
 class MobileMoneyScreen extends StatefulWidget {
   const MobileMoneyScreen({super.key});
 
@@ -336,32 +343,67 @@ class _MobileMoneyScreenState extends State<MobileMoneyScreen> {
                       // Operator selection
                       const Text('Operateur', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                       const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+                      Row(
                         children: _currentProviders.map((p) {
                           final code = p['code'] as String;
                           final name = p['name'] as String;
                           final isSelected = _selectedProvider == code;
                           final color = _providerColor(code);
-                          return GestureDetector(
-                            onTap: () => setState(() { _selectedProvider = code; }),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              decoration: BoxDecoration(
-                                color: isSelected ? color.withValues(alpha: 0.15) : Colors.white,
-                                border: Border.all(
-                                  color: isSelected ? color : AppColors.border,
-                                  width: isSelected ? 2 : 1,
+                          final logo = _providerLogo(code);
+                          return Expanded(
+                            child: GestureDetector(
+                              onTap: () => setState(() { _selectedProvider = code; }),
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 4),
+                                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                                decoration: BoxDecoration(
+                                  color: isSelected ? color.withValues(alpha: 0.12) : Colors.white,
+                                  border: Border.all(
+                                    color: isSelected ? color : AppColors.border,
+                                    width: isSelected ? 2.5 : 1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(14),
+                                  boxShadow: isSelected
+                                      ? [BoxShadow(color: color.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 2))]
+                                      : null,
                                 ),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                name,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                  color: isSelected ? color : AppColors.textSecondary,
+                                child: Column(
+                                  children: [
+                                    if (logo != null)
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(10),
+                                        child: Image.asset(logo, width: 44, height: 44, fit: BoxFit.contain),
+                                      )
+                                    else
+                                      Container(
+                                        width: 44,
+                                        height: 44,
+                                        decoration: BoxDecoration(
+                                          color: color.withValues(alpha: 0.2),
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            name.substring(0, 1),
+                                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color),
+                                          ),
+                                        ),
+                                      ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      name,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                        color: isSelected ? color : AppColors.textSecondary,
+                                      ),
+                                    ),
+                                    if (isSelected) ...[
+                                      const SizedBox(height: 4),
+                                      Icon(Icons.check_circle, color: color, size: 18),
+                                    ],
+                                  ],
                                 ),
                               ),
                             ),
